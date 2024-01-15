@@ -1,0 +1,195 @@
+---
+title: "Tubes ADS"
+author: "Syahrul"
+date: "2023-12-10"
+output: html_document
+---
+
+```{r}
+library(readxl)
+data <- read_excel("~/Downloads/TMA_Riau1_2018.xlsx")
+data
+```
+
+```{r}
+summary(data)
+```
+
+```{r}
+library(dplyr)
+library(lubridate)
+
+data$Tanggal <- as.POSIXct(data$Tanggal, format="%y-%m-%d %H:%M:%S")
+
+# Menambahkan kolom bulan dan tahun
+data <- data %>%
+  mutate(bulan = month(Tanggal), hari = day(Tanggal))
+
+# Menghitung rata-rata suhu per bulan
+rata2_Data <- data %>%
+  group_by(bulan, hari) %>%
+  summarise(rata2_gwl = mean(GWL))
+
+# Tampilkan hasil
+print(rata2_Data)
+```
+
+## Uji Normalitas
+
+```{r}
+tes <- shapiro.test(rata2_Data$rata2_gwl)
+print(tes)
+
+```
+
+```{r}
+p_value <- tes$p.value
+
+print(p_value)
+
+```
+
+```{r}
+alpha <- 0.05
+if (p_value < alpha) {
+  print("Data tidak berdistribusi normal")
+} else {
+  print("Data berdistribusi normal")
+}
+```
+
+```{r}
+qqnorm(rata2_Data$rata2_gwl, col = "blue")
+```
+
+```{r}
+library(ggpubr)
+ggpubr::ggqqplot(rata2_Data$rata2_gwl, color = "blue") +
+  ggtitle("QQ Plot - Evaluasi Normalitas Distribusi Rata-Rata GWL")
+
+```
+
+```{r}
+hist(rata2_Data$rata2_gwl, main = "Histogram Rata-Rata GWL",col = "cyan")
+```
+
+## Ekspresi Data
+
+```{r}
+boxplot(rata2_gwl~bulan, data = rata2_Data, main="Boxplot Rata-Rata GWL per Bulan", xlab="Bulan", ylab="GWL", col = "cyan")
+```
+
+```{r}
+library(ggpubr)
+
+# Membuat plot densitas
+plot_densitas <- ggdensity(
+  rata2_Data$rata2_gwl,
+  fill = "cyan",
+  add = "mean",
+  mean.color = "blue",
+  xlab = "Rata-Rata Tingkat GWL"
+) +
+theme_minimal()
+
+# Menghitung nilai rata-rata
+nilai_rata_rata <- mean(rata2_Data$rata2_gwl)
+
+# Menambahkan garis vertikal untuk nilai rata-rata
+plot_densitas + geom_vline(xintercept = nilai_rata_rata, linetype = "dashed", color = "red") +
+labs(title = "Distribusi Densitas Rata-Rata Tingkat Air Tanah")
+
+
+```
+
+## Derajat kebebasan
+
+```{r}
+library(dplyr)
+library(lubridate)
+
+data$Tanggal <- as.POSIXct(data$Tanggal, format="%y-%m-%d %H:%M:%S")
+
+# Menambahkan kolom bulan dan tahun
+data <- data %>%
+  mutate(bulan = month(Tanggal), hari = day(Tanggal))
+
+# Menghitung rata-rata suhu per bulan
+rata2_Data <- data %>%
+  group_by(bulan, hari) %>%
+  summarise(rata2_gwl = mean(GWL))
+
+N=nrow(rata2_Data)
+k=length(unique(rata2_gwl$bulan))
+dft=N-1
+dfp=k-1
+dfg=N-k
+df=c(dft,dfp,dfg)
+df
+```
+
+## Jumlah Kudrat
+
+```{r}
+library(dplyr)
+library(lubridate)
+
+data$Tanggal <- as.POSIXct(data$Tanggal, format="%y-%m-%d %H:%M:%S")
+
+# Menambahkan kolom bulan dan tahun
+data <- data %>%
+  mutate(bulan = month(Tanggal), hari = day(Tanggal))
+
+# Menghitung rata-rata suhu per bulan
+rata2_Data <- data %>%
+  group_by(bulan, hari) %>%
+  summarise(rata2_gwl = mean(GWL))
+
+
+rata2_perlakuan = aggregate(rata2_Data$rata2_gwl, list(rata2_Data$hari), mean)[,2]
+rata2_perlakuan
+
+n = aggregate(JK_Total, list(rata2_Data$bulan),length)[,2]
+n
+
+rata2=mean(rata2_Data$rata2_gwl)
+rata2
+
+JKt=sum((rata2_Data$bulan-rata2)^2)
+JKt
+JKp=sum(n*(rata2_perlakuan-rata2)^2)
+JKp
+JKg=JKt-JKp
+
+JK=c(JKt,JKp,JKg)
+JK
+```
+
+## Kuadrat Tengah
+
+```{r}
+KTp = JKp/dfp
+KTg = JKg/dfg
+KT=c(KTp,KTg)
+KT
+```
+
+## F Hitung
+
+```{r}
+Fhit = KTp/KTg 
+Fhit
+pVal=pf(Fhit,dfp,dfg,lower.tail = F)
+pVal
+```
+
+## Melakukan uji anova
+
+```{r}
+Anova <- aov(bulan~rata2_Data$rata2_gwl, data = rata2_Data)
+summary(Anova)
+```
+
+```{r}
+tukey_result <- TukeyHSD(Anova)
+```
